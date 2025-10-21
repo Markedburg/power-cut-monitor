@@ -31,10 +31,12 @@ object FormatUtils {
      * Format: "Xm Ys" or "Xs" for shorter display
      */
     fun formatDurationForList(durationSec: Long): String {
-        val minutes = durationSec / 60
+        val hours = durationSec / 3600
+        val minutes = (durationSec % 3600) / 60
         val seconds = durationSec % 60
         
         return when {
+            hours > 0 -> "${hours}h ${minutes}m ${seconds}s"
             minutes > 0 -> "${minutes}m ${seconds}s"
             else -> "${seconds}s"
         }

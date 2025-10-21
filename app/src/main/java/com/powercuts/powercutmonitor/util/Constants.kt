@@ -42,11 +42,18 @@ object Constants {
     const val PREF_LAST_EXPORT_EPOCH_MS = "last_export_epoch_ms"
     const val PREF_LAST_EXPORT_ZIP_HASH = "last_export_zip_hash"
     const val PREF_LAST_HEARTBEAT_MS = "last_heartbeat_ms"
+    const val PREF_THEME_MODE = "theme_mode"
     
     // Default preference values
     const val DEFAULT_MONITORING_ENABLED = false
     const val DEFAULT_LAST_STATE = "OFF"
     const val DEFAULT_DEBOUNCE_MS_VALUE = DEFAULT_DEBOUNCE_MS
+    
+    // Theme preferences
+    const val THEME_MODE_SYSTEM = "system"
+    const val THEME_MODE_LIGHT = "light"
+    const val THEME_MODE_DARK = "dark"
+    const val DEFAULT_THEME_MODE = THEME_MODE_SYSTEM
     
     // File paths
     const val EXPORTS_CACHE_DIR = "exports"
