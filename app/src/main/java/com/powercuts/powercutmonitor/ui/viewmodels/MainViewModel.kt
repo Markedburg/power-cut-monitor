@@ -11,6 +11,7 @@ import com.powercuts.powercutmonitor.data.prefs.PrefsManager
 import com.powercuts.powercutmonitor.data.repository.EventRepository
 import com.powercuts.powercutmonitor.domain.ExportManager
 import com.powercuts.powercutmonitor.service.PowerMonitorService
+import com.powercuts.powercutmonitor.ui.screens.ExportScope
 import com.powercuts.powercutmonitor.util.Constants
 import com.powercuts.powercutmonitor.util.DateTimeUtils
 import kotlinx.coroutines.flow.*
@@ -316,21 +317,22 @@ class MainViewModel(
     /**
      * Exports data and returns the ZIP file for sharing
      */
-    suspend fun exportData(allDays: Boolean = true): java.io.File {
-        return if (allDays) {
-            exportManager.buildZipForAllDays()
-        } else {
-            exportManager.buildZipForToday()
+    suspend fun exportData(scope: ExportScope = ExportScope.ALL_TIME): java.io.File {
+        return when (scope) {
+            ExportScope.TODAY -> exportManager.buildZipForToday()
+            ExportScope.LAST_7_DAYS -> exportManager.buildZipForLastNDays(7)
+            ExportScope.LAST_30_DAYS -> exportManager.buildZipForLastNDays(30)
+            ExportScope.ALL_TIME -> exportManager.buildZipForAllDays()
         }
     }
     
     /**
      * Triggers export and sharing (non-suspend version for UI)
      */
-    fun exportAndShare(allDays: Boolean = true) {
+    fun exportAndShare(scope: ExportScope = ExportScope.ALL_TIME) {
         viewModelScope.launch {
             try {
-                val exportFile = exportData(allDays)
+                val exportFile = exportData(scope)
                 _exportFile.value = exportFile
                 _errorMessage.value = "Data exported to: ${exportFile.name}"
             } catch (e: Exception) {

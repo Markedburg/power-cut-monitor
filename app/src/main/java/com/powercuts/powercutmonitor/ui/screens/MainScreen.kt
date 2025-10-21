@@ -1,6 +1,10 @@
 package com.powercuts.powercutmonitor.ui.screens
 
+import android.content.Context
+import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,28 +15,31 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import android.content.Context
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import com.powercuts.powercutmonitor.data.db.entities.PowerEvent
 import com.powercuts.powercutmonitor.data.db.entities.DailyTotal
 import com.powercuts.powercutmonitor.data.db.entities.TodayTotals
+import com.powercuts.powercutmonitor.data.prefs.PrefsManager
 import com.powercuts.powercutmonitor.ui.theme.PowerCutMonitorTheme
 import com.powercuts.powercutmonitor.ui.viewmodels.MainViewModel
 import com.powercuts.powercutmonitor.ui.viewmodels.MainViewModelFactory
-import com.powercuts.powercutmonitor.util.FormatUtils
-import com.powercuts.powercutmonitor.util.DateTimeUtils
 import com.powercuts.powercutmonitor.util.BatteryOptimizationUtils
-import kotlinx.coroutines.launch
+import com.powercuts.powercutmonitor.util.Constants
+import com.powercuts.powercutmonitor.util.DateTimeUtils
+import com.powercuts.powercutmonitor.util.FormatUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,6 +49,9 @@ fun MainScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val prefsManager = remember { PrefsManager(context) }
+    val coroutineScope = rememberCoroutineScope()
+    val currentThemeMode by prefsManager.themeMode.collectAsState(initial = Constants.DEFAULT_THEME_MODE)
     
     // Safe state collection with default values
     val isMonitoring by viewModel.isMonitoring.collectAsState(initial = false)
@@ -57,6 +67,7 @@ fun MainScreen(
     var showDeleteDialog by remember { mutableStateOf<PowerEvent?>(null) }
     var showExportDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
+    var showThemeMenu by remember { mutableStateOf(false) }
     var showBatteryOptimizationDialog by remember { mutableStateOf(false) }
     var showUnusedAppSettingsDialog by remember { mutableStateOf(false) }
     var userInitiatedBatteryDialog by remember { mutableStateOf(false) }
@@ -122,7 +133,7 @@ fun MainScreen(
     ) {
         // App Bar
         TopAppBar(
-            title = { 
+            title = {
                 Text(
                     text = "Power Cuts Log",
                     style = MaterialTheme.typography.titleLarge.copy(fontSize = 28.sp),
@@ -132,6 +143,172 @@ fun MainScreen(
                 )
             },
             actions = {
+                // Theme dropdown menu
+                Box {
+                    IconButton(onClick = { showThemeMenu = true }) {
+                        Icon(
+                            imageVector = when (currentThemeMode) {
+                                Constants.THEME_MODE_LIGHT -> Icons.Default.LightMode
+                                Constants.THEME_MODE_DARK -> Icons.Default.DarkMode
+                                else -> if (isSystemInDarkTheme()) Icons.Default.DarkMode else Icons.Default.LightMode
+                            },
+                            contentDescription = "Theme"
+                        )
+                    }
+                    
+                    DropdownMenu(
+                        expanded = showThemeMenu,
+                        onDismissRequest = { showThemeMenu = false },
+                        modifier = Modifier
+                            .width(160.dp)
+                            .background(
+                                color = when (currentThemeMode) {
+                                    Constants.THEME_MODE_DARK -> Color(0xFF2C2C2E)  // Dark mode: dark grey
+                                    Constants.THEME_MODE_LIGHT -> Color(0xFFF8F8FF)  // Light mode: light lavender
+                                    else -> if (isSystemInDarkTheme()) Color(0xFF2C2C2E) else Color(0xFFF8F8FF)  // Auto: follow system
+                                },
+                                shape = RoundedCornerShape(12.dp)
+                            ),
+                        offset = DpOffset(x = 0.dp, y = 4.dp)
+                    ) {
+                        // Auto option
+                        DropdownMenuItem(
+                            text = { 
+                                Text(
+                                    "Auto",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (currentThemeMode == Constants.THEME_MODE_SYSTEM) 
+                                        FontWeight.Medium 
+                                    else 
+                                        FontWeight.Normal,
+                                    color = if (currentThemeMode == Constants.THEME_MODE_SYSTEM)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurface
+                                )
+                            },
+                            onClick = {
+                                coroutineScope.launch {
+                                    prefsManager.setThemeMode(Constants.THEME_MODE_SYSTEM)
+                                }
+                                showThemeMenu = false
+                            },
+                            trailingIcon = {
+                                if (currentThemeMode == Constants.THEME_MODE_SYSTEM) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Selected",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                                .then(
+                                    if (currentThemeMode == Constants.THEME_MODE_SYSTEM)
+                                        Modifier.background(
+                                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                    else
+                                        Modifier
+                                )
+                        )
+                        
+                        // Dark option
+                        DropdownMenuItem(
+                            text = { 
+                                Text(
+                                    "Dark",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (currentThemeMode == Constants.THEME_MODE_DARK) 
+                                        FontWeight.Medium 
+                                    else 
+                                        FontWeight.Normal,
+                                    color = if (currentThemeMode == Constants.THEME_MODE_DARK)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurface
+                                )
+                            },
+                            onClick = {
+                                coroutineScope.launch {
+                                    prefsManager.setThemeMode(Constants.THEME_MODE_DARK)
+                                }
+                                showThemeMenu = false
+                            },
+                            trailingIcon = {
+                                if (currentThemeMode == Constants.THEME_MODE_DARK) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Selected",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                                .then(
+                                    if (currentThemeMode == Constants.THEME_MODE_DARK)
+                                        Modifier.background(
+                                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                    else
+                                        Modifier
+                                )
+                        )
+                        
+                        // Light option
+                        DropdownMenuItem(
+                            text = { 
+                                Text(
+                                    "Light",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (currentThemeMode == Constants.THEME_MODE_LIGHT) 
+                                        FontWeight.Medium 
+                                    else 
+                                        FontWeight.Normal,
+                                    color = if (currentThemeMode == Constants.THEME_MODE_LIGHT)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurface
+                                )
+                            },
+                            onClick = {
+                                coroutineScope.launch {
+                                    prefsManager.setThemeMode(Constants.THEME_MODE_LIGHT)
+                                }
+                                showThemeMenu = false
+                            },
+                            trailingIcon = {
+                                if (currentThemeMode == Constants.THEME_MODE_LIGHT) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Selected",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                                .then(
+                                    if (currentThemeMode == Constants.THEME_MODE_LIGHT)
+                                        Modifier.background(
+                                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                    else
+                                        Modifier
+                                )
+                        )
+                    }
+                }
+                
+                // About button
                 IconButton(onClick = { showAboutDialog = true }) {
                     Icon(Icons.Default.Info, contentDescription = "About App")
                 }
@@ -315,9 +492,8 @@ fun MainScreen(
         ExportDialog(
             onDismiss = { showExportDialog = false },
             onExport = { scope ->
-                val allDays = scope == ExportScope.ALL_TIME
-                // Trigger export in ViewModel
-                viewModel.exportAndShare(allDays)
+                // Trigger export in ViewModel with the actual scope
+                viewModel.exportAndShare(scope)
                 showExportDialog = false
             }
         )

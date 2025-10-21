@@ -29,6 +29,7 @@ class PrefsManager(private val context: Context) {
     private val lastExportEpochMsKey = longPreferencesKey(Constants.PREF_LAST_EXPORT_EPOCH_MS)
     private val lastExportZipHashKey = stringPreferencesKey(Constants.PREF_LAST_EXPORT_ZIP_HASH)
     private val lastHeartbeatMsKey = longPreferencesKey(Constants.PREF_LAST_HEARTBEAT_MS)
+    private val themeModeKey = stringPreferencesKey(Constants.PREF_THEME_MODE)
     
     /**
      * Monitoring enabled state
@@ -77,6 +78,13 @@ class PrefsManager(private val context: Context) {
      */
     val lastHeartbeatMs: Flow<Long?> = dataStore.data.map { preferences ->
         preferences[lastHeartbeatMsKey]
+    }
+    
+    /**
+     * Theme mode preference
+     */
+    val themeMode: Flow<String> = dataStore.data.map { preferences ->
+        preferences[themeModeKey] ?: Constants.DEFAULT_THEME_MODE
     }
     
     /**
@@ -135,6 +143,15 @@ class PrefsManager(private val context: Context) {
     suspend fun setLastHeartbeatMs(heartbeatMs: Long) {
         dataStore.edit { preferences ->
             preferences[lastHeartbeatMsKey] = heartbeatMs
+        }
+    }
+    
+    /**
+     * Set the theme mode
+     */
+    suspend fun setThemeMode(mode: String) {
+        dataStore.edit { preferences ->
+            preferences[themeModeKey] = mode
         }
     }
     
